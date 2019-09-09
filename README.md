@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/tlux/temp_file.svg?branch=master)](https://travis-ci.org/tlux/temp_file)
 [![Coverage Status](https://coveralls.io/repos/github/tlux/temp_file/badge.svg?branch=master)](https://coveralls.io/github/tlux/temp_file?branch=master)
-[![Hex.pm](https://img.shields.io/hexpm/v/sftp_client.svg)](https://hex.pm/packages/sftp_client)
+[![Hex.pm](https://img.shields.io/hexpm/v/temp_file.svg)](https://hex.pm/packages/temp_file)
 
 An Elixir library to create and track temp files.
 
