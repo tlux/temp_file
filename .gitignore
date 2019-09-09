@@ -20,13 +20,9 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-sftp_client-*.tar
+temp_file-*.tar
 
-# Ignore all ElixirLS stuff.
-/.elixir_ls
-
-# Ignore Mac OS stuff.
 .DS_Store
-
-# Files for integration tests
-/test/sftp_files
+/.elixir_ls
+/.vscode
+/tmp

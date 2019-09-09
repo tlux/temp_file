@@ -11,6 +11,7 @@ defmodule TempFile.MixProject do
       start_permanent: Mix.env() == :prod,
       description: description(),
       deps: deps(),
+      aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
@@ -33,14 +34,18 @@ defmodule TempFile.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
+  defp aliases do
     [
-      extra_applications: [:logger, :ssh]
+      test: "test --no-start"
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
   defp deps do
     [
       {:credo, "~> 1.0.5", only: [:dev, :test], runtime: false},
