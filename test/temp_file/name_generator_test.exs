@@ -3,45 +3,63 @@ defmodule TempFile.NameGeneratorTest do
 
   alias TempFile.NameGenerator
 
-  describe "generate_filename/2" do
+  describe "generate_name/0" do
+    test "generate random name" do
+      assert String.length(NameGenerator.generate_name(nil, [])) == 48
+    end
+  end
+
+  describe "generate_name/1" do
+    test "with string" do
+      assert NameGenerator.generate_name("my-basename") =~
+               ~r/\Amy-basename-(.*){48}\z/
+    end
+
+    test "with options" do
+      assert NameGenerator.generate_name(prefix: "my-prefix", suffix: ".jpg") =~
+               ~r/\Amy-prefix-(.*){48}.jpg\z/
+    end
+  end
+
+  describe "generate_name/2" do
     test "with no options" do
-      assert String.length(NameGenerator.generate_filename(nil, [])) == 48
+      assert String.length(NameGenerator.generate_name(nil, [])) == 48
     end
 
     test "with basename only" do
-      assert NameGenerator.generate_filename("my-basename", []) =~
+      assert NameGenerator.generate_name("my-basename", []) =~
                ~r/\Amy-basename-(.*){48}\z/
     end
 
     test "with prefix only" do
-      assert NameGenerator.generate_filename(nil, prefix: "my-prefix") =~
+      assert NameGenerator.generate_name(nil, prefix: "my-prefix") =~
                ~r/\Amy-prefix-(.*){48}\z/
     end
 
     test "with suffix only" do
-      assert NameGenerator.generate_filename(nil, suffix: ".txt") =~
+      assert NameGenerator.generate_name(nil, suffix: ".txt") =~
                ~r/\A(.*){48}.txt\z/
     end
 
     test "with prefix and suffix" do
-      assert NameGenerator.generate_filename(nil,
+      assert NameGenerator.generate_name(nil,
                prefix: "my-prefix",
                suffix: ".png"
              ) =~ ~r/\Amy-prefix-(.*){48}.png\z/
     end
 
     test "with prefix and basename" do
-      assert NameGenerator.generate_filename("my-basename", prefix: "my-prefix") =~
+      assert NameGenerator.generate_name("my-basename", prefix: "my-prefix") =~
                ~r/\Amy-prefix-my-basename-(.*){48}\z/
     end
 
     test "with basename and suffix" do
-      assert NameGenerator.generate_filename("my-basename", suffix: ".png") =~
+      assert NameGenerator.generate_name("my-basename", suffix: ".png") =~
                ~r/\Amy-basename-(.*){48}.png\z/
     end
 
     test "with prefix, basename and suffix" do
-      assert NameGenerator.generate_filename("my-basename",
+      assert NameGenerator.generate_name("my-basename",
                prefix: "my-prefix",
                suffix: ".jpg"
              ) =~ ~r/\Amy-prefix-my-basename-(.*){48}.jpg\z/
