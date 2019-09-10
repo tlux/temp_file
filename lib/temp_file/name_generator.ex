@@ -19,7 +19,7 @@ defmodule TempFile.NameGenerator do
     do_generate_name(nil, opts)
   end
 
-  @spec generate_name(String.t(), Keyword.t()) :: String.t()
+  @spec generate_name(nil | String.t(), Keyword.t()) :: String.t()
   def generate_name(basename, opts) do
     do_generate_name(basename, opts)
   end
@@ -28,6 +28,7 @@ defmodule TempFile.NameGenerator do
     [opts[:prefix], basename, generate_random_part(), opts[:suffix]]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("-")
+    |> Kernel.<>(to_string(opts[:extname]))
   end
 
   defp generate_random_part do
