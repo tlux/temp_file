@@ -6,9 +6,9 @@ defmodule TempFile.TrackerTest do
 
   describe "stop/0" do
     test "cleanup files" do
-      dirname = setup_test_dir()
-      {:ok, _} = Tracker.start_link()
+      Tracker.enable_tracker()
 
+      dirname = setup_test_dir()
       path_a = Path.join(dirname, "lorem-ipsum.txt")
       path_b = Path.join(dirname, "test-folder")
 
@@ -31,16 +31,13 @@ defmodule TempFile.TrackerTest do
   end
 
   describe "get_paths/0" do
-    setup do
-      start_supervised!(Tracker)
-      :ok
-    end
-
     test "empty list when no paths tracked" do
       assert Tracker.get_paths() == []
     end
 
     test "list tracked paths" do
+      Tracker.enable_tracker()
+
       assert :ok = Tracker.put_path("my/custom/path")
       assert :ok = Tracker.put_path("path/to/another/file.txt")
       assert :ok = Tracker.put_path("my/custom/path")
@@ -53,12 +50,8 @@ defmodule TempFile.TrackerTest do
   end
 
   describe "put_path/1" do
-    test "ok when server not running" do
-      assert :ok = Tracker.put_path("my/custom/path")
-    end
-
-    test "ok when server running" do
-      start_supervised!(Tracker)
+    test "add path when tracking enabled" do
+      :ok = Tracker.enable_tracker()
 
       assert :ok = Tracker.put_path("my/custom/path")
       assert :ok = Tracker.put_path("path/to/another/file.txt")
@@ -69,11 +62,13 @@ defmodule TempFile.TrackerTest do
                "path/to/another/file.txt"
              ]
     end
+
+    test "do not add path when tracking disabled" do
+    end
   end
 
   describe "cleanup_files/0" do
     setup do
-      start_supervised!(Tracker)
       dirname = setup_test_dir()
       {:ok, dirname: dirname}
     end
@@ -83,6 +78,8 @@ defmodule TempFile.TrackerTest do
     end
 
     test "remove tracked files", %{dirname: dirname} do
+      Tracker.enable_tracker()
+
       path_a = Path.join(dirname, "lorem-ipsum.txt")
       path_b = Path.join(dirname, "test-folder")
 
