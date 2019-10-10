@@ -6,18 +6,16 @@ defmodule TempFileTest do
   @content "Lorem Ipsum"
 
   describe "dir/0" do
-    test "get default dir" do
-      assert TempFile.dir() == "tmp"
+    test "get configured dir" do
+      assert TempFile.dir() == "tmp/test"
     end
 
-    test "get configured base dir" do
-      dir = "tmp/custom"
-
+    test "get system temp when not configured" do
       prev_dir = Application.get_env(:temp_file, :dir)
-      Application.put_env(:temp_file, :dir, dir)
+      Application.delete_env(:temp_file, :dir)
       on_exit(fn -> Application.put_env(:temp_file, :dir, prev_dir) end)
 
-      assert TempFile.dir() == dir
+      assert TempFile.dir() == System.tmp_dir!()
     end
   end
 
@@ -27,7 +25,7 @@ defmodule TempFileTest do
 
       path = TempFile.path()
 
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert TempFile.tracked_paths() == [path]
     end
   end
@@ -41,21 +39,21 @@ defmodule TempFileTest do
     test "build path with nil arg" do
       path = TempFile.path(nil)
 
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert TempFile.tracked_paths() == [path]
     end
 
     test "build path with empty keyword list arg" do
       path = TempFile.path([])
 
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert TempFile.tracked_paths() == [path]
     end
 
     test "build path with basename" do
       path = TempFile.path("my-basename")
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert TempFile.tracked_paths() == [path]
     end
 
@@ -63,7 +61,9 @@ defmodule TempFileTest do
       path =
         TempFile.path(prefix: "my-prefix", suffix: "my-suffix", extname: ".txt")
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix.txt\z/
+      assert path =~
+               ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix.txt\z/
+
       assert TempFile.tracked_paths() == [path]
     end
   end
@@ -81,7 +81,7 @@ defmodule TempFileTest do
         )
 
       assert path =~
-               ~r/\Atmp\/my-prefix-my-basename-([A-Za-z0-9-_]){48}-my-suffix.txt\z/
+               ~r/\Atmp\/test\/my-prefix-my-basename-([A-Za-z0-9-_]){48}-my-suffix.txt\z/
 
       assert TempFile.tracked_paths() == [path]
     end
@@ -92,7 +92,7 @@ defmodule TempFileTest do
       start_supervised!({Tracker, enabled: true})
 
       assert {:ok, path} = TempFile.mkdir()
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert File.dir?(path)
       assert TempFile.tracked_paths() == [path]
     end
@@ -106,7 +106,7 @@ defmodule TempFileTest do
 
     test "create dir with basename" do
       assert {:ok, path} = TempFile.mkdir("my-basename")
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.dir?(path)
       assert TempFile.tracked_paths() == [path]
     end
@@ -115,7 +115,7 @@ defmodule TempFileTest do
       assert {:ok, path} =
                TempFile.mkdir(prefix: "my-prefix", suffix: "my-suffix")
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert File.dir?(path)
       assert TempFile.tracked_paths() == [path]
     end
@@ -141,7 +141,7 @@ defmodule TempFileTest do
     test "create dir with basename" do
       path = TempFile.mkdir!("my-basename")
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.dir?(path)
       assert TempFile.tracked_paths() == [path]
     end
@@ -149,7 +149,7 @@ defmodule TempFileTest do
     test "create dir with opts" do
       path = TempFile.mkdir!(prefix: "my-prefix", suffix: "my-suffix")
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert File.dir?(path)
       assert TempFile.tracked_paths() == [path]
     end
@@ -160,7 +160,7 @@ defmodule TempFileTest do
       start_supervised!({Tracker, enabled: true})
 
       assert {:ok, path} = TempFile.write(@content)
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -175,7 +175,7 @@ defmodule TempFileTest do
 
     test "write contents to temp file with basename" do
       assert {:ok, path} = TempFile.write("my-basename", @content)
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -188,7 +188,7 @@ defmodule TempFileTest do
                  @content
                )
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -201,7 +201,7 @@ defmodule TempFileTest do
 
       path = TempFile.write!(@content)
 
-      assert path =~ ~r/\Atmp\/([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/([A-Za-z0-9-_]){48}\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -217,7 +217,7 @@ defmodule TempFileTest do
     test "write contents to temp file with basename" do
       path = TempFile.write!("my-basename", @content)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -230,7 +230,7 @@ defmodule TempFileTest do
           @content
         )
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert File.regular?(path)
       assert File.read!(path) == @content
       assert TempFile.tracked_paths() == [path]
@@ -247,7 +247,7 @@ defmodule TempFileTest do
       assert {:ok, path, file} = TempFile.open("my-basename")
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -261,7 +261,7 @@ defmodule TempFileTest do
 
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -280,7 +280,7 @@ defmodule TempFileTest do
       assert {:ok, path, file} = TempFile.open("my-basename", [:binary])
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -295,7 +295,7 @@ defmodule TempFileTest do
                  :hello
                end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
     end
   end
@@ -310,7 +310,7 @@ defmodule TempFileTest do
                  :hello
                end)
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
       assert res == :hello
     end
@@ -326,7 +326,7 @@ defmodule TempFileTest do
       {path, file} = TempFile.open!("my-basename")
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -338,7 +338,7 @@ defmodule TempFileTest do
       {path, file} = TempFile.open!(prefix: "my-prefix", suffix: "my-suffix")
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}-my-suffix\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -357,7 +357,7 @@ defmodule TempFileTest do
       assert {path, file} = TempFile.open!("my-basename", [:binary])
       on_exit(fn -> File.close(file) end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert IO.binwrite(file, @content)
 
       File.close(file)
@@ -372,7 +372,7 @@ defmodule TempFileTest do
                  :hello
                end)
 
-      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
     end
   end
@@ -387,7 +387,7 @@ defmodule TempFileTest do
                  :hello
                end)
 
-      assert path =~ ~r/\Atmp\/my-prefix-([A-Za-z0-9-_]){48}\z/
+      assert path =~ ~r/\Atmp\/test\/my-prefix-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
       assert res == :hello
     end

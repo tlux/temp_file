@@ -141,7 +141,8 @@ defmodule TempFile do
   def write(basename_or_opts \\ nil, content) do
     path = build_path(basename_or_opts)
 
-    with :ok <- File.write(path, content) do
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         :ok <- File.write(path, content) do
       {:ok, path}
     end
   end
@@ -159,6 +160,7 @@ defmodule TempFile do
         ) :: Path.t()
   def write!(basename_or_opts \\ nil, content) do
     path = build_path(basename_or_opts)
+    File.mkdir_p!(Path.dirname(path))
     File.write!(path, content)
     path
   end
@@ -190,7 +192,8 @@ defmodule TempFile do
   def open(basename_or_opts, fun) when is_function(fun) do
     path = build_path(basename_or_opts)
 
-    with {:ok, res} <- File.open(path, file_modes([]), fun) do
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         {:ok, res} <- File.open(path, file_modes([]), fun) do
       {:ok, path, res}
     end
   end
@@ -198,7 +201,8 @@ defmodule TempFile do
   def open(basename_or_opts, modes) do
     path = build_path(basename_or_opts)
 
-    with {:ok, res} <- File.open(path, file_modes(modes)) do
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         {:ok, res} <- File.open(path, file_modes(modes)) do
       {:ok, path, res}
     end
   end
@@ -218,7 +222,8 @@ defmodule TempFile do
   def open(basename_or_opts, modes, fun) do
     path = build_path(basename_or_opts)
 
-    with {:ok, res} <- File.open(path, file_modes(modes), fun) do
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         {:ok, res} <- File.open(path, file_modes(modes), fun) do
       {:ok, path, res}
     end
   end
@@ -251,12 +256,14 @@ defmodule TempFile do
 
   def open!(basename_or_opts, fun) when is_function(fun) do
     path = build_path(basename_or_opts)
+    File.mkdir_p!(Path.dirname(path))
     res = File.open!(path, file_modes([]), fun)
     {path, res}
   end
 
   def open!(basename_or_opts, modes) do
     path = build_path(basename_or_opts)
+    File.mkdir_p!(Path.dirname(path))
     res = File.open!(path, file_modes(modes))
     {path, res}
   end
@@ -276,6 +283,7 @@ defmodule TempFile do
         when res: var
   def open!(basename_or_opts, modes, fun) do
     path = build_path(basename_or_opts)
+    File.mkdir_p!(Path.dirname(path))
     res = File.open!(path, file_modes(modes), fun)
     {path, res}
   end

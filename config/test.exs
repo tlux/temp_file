@@ -1,3 +1,3 @@
 import Config
 
-config :temp_file, dir: "tmp"
+config :temp_file, dir: "tmp/test"
