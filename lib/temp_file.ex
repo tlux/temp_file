@@ -12,31 +12,10 @@ defmodule TempFile do
   @type tracker :: GenServer.server()
 
   @doc false
-  @spec __base_dir__ :: Path.t()
-  def __base_dir__ do
-    Application.get_env(:temp_file, :base_dir, "tmp")
+  @spec dir :: Path.t()
+  def dir do
+    Application.get_env(:temp_file, :dir) || System.tmp_dir!()
   end
-
-  @doc """
-  Enable temp file tracking. Tracked files are removed when calling `cleanup/0`.
-  """
-  @spec track() :: :ok
-  def track do
-    Tracker.enable_tracker()
-  end
-
-  @doc """
-  Disable temp file tracking.
-  """
-  @spec untrack() :: :ok
-  def untrack do
-    Tracker.disable_tracker()
-  end
-
-  # @spec untrack :: :ok
-  # def untrack do
-  #   Tracker.untrack()
-  # end
 
   @doc """
   Gets the path to a temp file or directory.
@@ -114,20 +93,30 @@ defmodule TempFile do
   end
 
   defp build_path(basename, opts) do
-    path =
-      Path.join(
-        __base_dir__(),
-        NameGenerator.generate_name(basename, opts)
-      )
-
+    path = Path.join(dir(), NameGenerator.generate_name(basename, opts))
     Tracker.put_path(path)
     path
   end
 
   @doc """
+  Enable temp file tracking. Tracked files are removed when calling `cleanup/0`
+  or when the tracker process terminates.
+  """
+  @spec track() :: :ok
+  def track do
+    Tracker.toggle_tracker(true)
+  end
+
+  @doc """
+  Disable temp file tracking.
+  """
+  @spec untrack() :: :ok
+  def untrack do
+    Tracker.toggle_tracker(false)
+  end
+
+  @doc """
   Remove all tracked files from the file system.
-
-
   """
   @spec cleanup() :: :ok
   def cleanup do

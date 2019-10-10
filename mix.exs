@@ -35,13 +35,15 @@ defmodule TempFile.MixProject do
   end
 
   defp aliases do
-    []
+    [
+      test: ["test --no-start"]
+    ]
   end
 
   def application do
     [
-      extra_applications: [:logger],
-      mod: {TempFile.Application, []}
+      mod: {TempFile.Application, []},
+      registered: [TempFile.Tracker]
     ]
   end
 

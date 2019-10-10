@@ -1,143 +1,69 @@
 defmodule TempFile.Tracker do
-  @moduledoc """
-  A server that tracks all temp paths generated during its runtime. Can be used
-  to cleanup all tracked files when needed. Automatically clears all tracked
-  files when the server terminates.
-
-  ## Usage in Tests
-
-  TODO
-  """
+  @moduledoc false
 
   use GenServer
 
-  @initial_state %{}
-
-  @doc """
-  Starts the tracker.
-  """
-  @spec start_link(Keyword.t()) :: TempFile.tracker()
-  def start_link(opts \\ []) do
-    opts = Keyword.put(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, :ok, opts)
+  @spec start_link(Keyword.t()) :: GenServer.on_start()
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @doc """
-  Stops the tracker.
-  """
-  @spec stop() :: :ok
-  def stop do
-    GenServer.stop(__MODULE__)
+  @spec stop(term) :: :ok
+  def stop(reason \\ :normal) do
+    GenServer.stop(__MODULE__, reason)
   end
 
-  @doc """
-  Enables temp file tracking for the current process.
-  """
-  @spec enable_tracker() :: :ok
-  def enable_tracker(pid \\ self()) do
-    GenServer.cast(__MODULE__, {:enable_tracker, pid})
+  @spec toggle_tracker(boolean) :: :ok
+  def toggle_tracker(enabled) do
+    GenServer.call(__MODULE__, {:toggle_tracker, enabled})
   end
 
-  @doc """
-  Disables temp file tracking for the current process.
-  """
-  @spec disable_tracker(pid) :: :ok
-  def disable_tracker(pid \\ self()) do
-    GenServer.cast(__MODULE__, {:disable_tracker, pid})
+  @spec put_path(Path.t()) :: :ok | :error
+  def put_path(path) do
+    GenServer.call(__MODULE__, {:put_path, path})
   end
 
-  @doc """
-  Gets all tracked paths.
-  """
-  @spec get_paths(pid) :: [Path.t()]
-  def get_paths(pid \\ self()) do
-    __MODULE__
-    |> GenServer.call({:get_paths, pid})
-    |> Enum.to_list()
-  end
-
-  @doc """
-  Puts a new tracked path.
-  """
-  @spec put_path(pid, Path.t()) :: :ok
-  def put_path(pid \\ self(), path) do
-    GenServer.cast(__MODULE__, {:put_path, pid, path})
-  end
-
-  @doc """
-  Removes all tracked files and resets the tracker.
-  """
-  @spec cleanup_files(pid) :: [Path.t()]
-  def cleanup_files(pid \\ self()) do
-    __MODULE__
-    |> GenServer.call({:cleanup_files, pid})
-    |> Enum.to_list()
-  end
-
-  def cleanup_all_files do
-    __MODULE__
-    |> GenServer.call(:cleanup_all_files)
-    |> Enum.to_list()
+  @spec cleanup_files() :: :ok
+  def cleanup_files do
+    GenServer.call(__MODULE__, :cleanup_files)
   end
 
   # Callbacks
 
   @impl true
-  def init(:ok), do: {:ok, @initial_state}
+  def init(opts) do
+    enabled? =
+      Keyword.get_lazy(opts, :enabled, fn ->
+        Application.get_env(:temp_file, :tracker_enabled?, false)
+      end)
 
-  @impl true
-  def handle_cast({:enable_tracker, pid}, state) do
-    {:noreply, Map.put_new(state, pid, MapSet.new())}
-  end
-
-  def handle_cast({:disable_tracker, pid}, state) do
-    {:noreply, Map.delete(state, pid)}
-  end
-
-  def handle_cast({:put_path, pid, path}, state) do
-    if Map.has_key?(state, pid) do
-      {:noreply, Map.update!(state, pid, &MapSet.put(&1, path))}
-    else
-      {:noreply, state}
-    end
-  end
-
-  @impl true
-  def handle_call({:get_paths, pid}, _from, state) do
-    paths = Map.get(state, pid, MapSet.new())
-    {:reply, paths, state}
-  end
-
-  def handle_call({:cleanup_files, pid}, _from, state) do
-    case Map.fetch(state, pid) do
-      {:ok, paths} ->
-        do_cleanup_files(paths)
-        {:reply, paths, Map.put(state, pid, MapSet.new())}
-
-      :error ->
-        {:reply, MapSet.new(), state}
-    end
-  end
-
-  def handle_call(:cleanup_all_files, _from, state) do
-    paths = do_cleanup_all_files(state)
-    {:reply, paths, @initial_state}
+    {:ok, %{enabled?: enabled?, paths: MapSet.new()}}
   end
 
   @impl true
   def terminate(_reason, state) do
-    do_cleanup_all_files(state)
+    do_cleanup_files(state.paths)
+  end
+
+  @impl true
+  def handle_call({:toggle_tracker, enabled}, _from, state) do
+    {:reply, :ok, put_in(state.enabled?, enabled)}
+  end
+
+  def handle_call({:put_path, path}, _from, %{enabled?: true} = state) do
+    {:reply, :ok, %{state | paths: MapSet.put(state.paths, path)}}
+  end
+
+  def handle_call({:put_path, _path}, _from, state) do
+    {:reply, :error, state}
+  end
+
+  def handle_call(:cleanup_files, _from, state) do
+    do_cleanup_files(state.paths)
+    {:reply, :ok, %{state | paths: MapSet.new()}}
   end
 
   defp do_cleanup_files(paths) do
-    Enum.each(paths, fn path ->
-      File.rm_rf!(path)
-    end)
-  end
-
-  defp do_cleanup_all_files(state) do
-    paths = for {_, paths} <- state, path <- paths, into: MapSet.new(), do: path
-    do_cleanup_files(paths)
-    paths
+    Enum.each(paths, &File.rm_rf!/1)
   end
 end

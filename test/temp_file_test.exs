@@ -1,18 +1,19 @@
 defmodule TempFileTest do
   use ExUnit.Case, async: true
 
-  describe "__base_dir__/0" do
-    test "get default base dir" do
-      assert TempFile.__base_dir__() == "tmp"
+  describe "dir/0" do
+    test "get default dir" do
+      assert TempFile.dir() == "tmp"
     end
 
     test "get configured base dir" do
-      base_dir = "tmp/custom"
+      dir = "tmp/custom"
 
-      Application.put_env(:temp_file, :base_dir, base_dir)
-      on_exit(fn -> Application.delete_env(:temp_file, :base_dir) end)
+      prev_dir = Application.get_env(:temp_file, :dir)
+      Application.put_env(:temp_file, :dir, dir)
+      on_exit(fn -> Application.put_env(:temp_file, :dir, prev_dir) end)
 
-      assert TempFile.__base_dir__() == base_dir
+      assert TempFile.dir() == dir
     end
   end
 end
