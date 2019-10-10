@@ -13,9 +13,19 @@ defmodule TempFile.Tracker do
     GenServer.stop(__MODULE__, reason)
   end
 
+  @spec tracker_enabled?() :: boolean
+  def tracker_enabled? do
+    GenServer.call(__MODULE__, :tracker_enabled?)
+  end
+
   @spec toggle_tracker(boolean) :: :ok
   def toggle_tracker(enabled) do
     GenServer.call(__MODULE__, {:toggle_tracker, enabled})
+  end
+
+  @spec get_paths() :: [Path.t()]
+  def get_paths do
+    GenServer.call(__MODULE__, :get_paths)
   end
 
   @spec put_path(Path.t()) :: :ok | :error
@@ -46,8 +56,16 @@ defmodule TempFile.Tracker do
   end
 
   @impl true
+  def handle_call(:tracker_enabled?, _from, state) do
+    {:reply, state.enabled?, state}
+  end
+
   def handle_call({:toggle_tracker, enabled}, _from, state) do
     {:reply, :ok, put_in(state.enabled?, enabled)}
+  end
+
+  def handle_call(:get_paths, _from, state) do
+    {:reply, Enum.to_list(state.paths), state}
   end
 
   def handle_call({:put_path, path}, _from, %{enabled?: true} = state) do

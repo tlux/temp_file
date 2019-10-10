@@ -1,15 +1,10 @@
 defmodule TempFile do
   @moduledoc """
-  Documentation for TempFile.
+  The TempFile main module.
   """
 
   alias TempFile.NameGenerator
   alias TempFile.Tracker
-
-  @typedoc """
-  A type representing a file tracker server.
-  """
-  @type tracker :: GenServer.server()
 
   @doc false
   @spec dir :: Path.t()
@@ -56,15 +51,9 @@ defmodule TempFile do
       iex> TempFile.path(prefix: "my-prefix", suffix: "txt")
       "tmp/my-prefix-sEUeC2zDsQuy_C9LJSTEQZVp1EPKlprLTPSTqStkplCraOWZ-txt"
   """
-  @spec path(String.t() | Keyword.t()) :: Path.t()
-  def path(basename_or_opts)
-
-  def path(basename) when is_binary(basename) do
-    build_path(basename, [])
-  end
-
-  def path(opts) when is_list(opts) do
-    build_path(nil, opts)
+  @spec path(basename_or_opts :: String.t() | Keyword.t()) :: Path.t()
+  def path(basename_or_opts) do
+    build_path(basename_or_opts)
   end
 
   @doc """
@@ -87,15 +76,201 @@ defmodule TempFile do
       iex> TempFile.path("my-basename", prefix: "my-prefix", extname: ".txt")
       "tmp/my-prefix-my-basename-sEUeC2zDsQuy_C9LJSTEQZVp1EPKlprLTPSTqStkplCraOWZ.txt"
   """
-  @spec path(String.t(), Keyword.t()) :: Path.t()
+  @spec path(basename :: String.t(), opts :: Keyword.t()) :: Path.t()
   def path(basename, opts) do
     build_path(basename, opts)
+  end
+
+  defp build_path(nil) do
+    build_path(nil, [])
+  end
+
+  defp build_path(basename) when is_binary(basename) do
+    build_path(basename, [])
+  end
+
+  defp build_path(opts) when is_list(opts) do
+    build_path(nil, opts)
   end
 
   defp build_path(basename, opts) do
     path = Path.join(dir(), NameGenerator.generate_name(basename, opts))
     Tracker.put_path(path)
     path
+  end
+
+  @doc """
+  Creates a temporary directory.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec mkdir(basename_or_opts :: nil | String.t() | Keyword.t()) ::
+          {:ok, Path.t()} | {:error, File.posix()}
+  def mkdir(basename_or_opts \\ nil) do
+    path = build_path(basename_or_opts)
+
+    with :ok <- File.mkdir_p(path) do
+      {:ok, path}
+    end
+  end
+
+  @doc """
+  Creates a temporary directory. Raises a `File.Error` in case of failure.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec mkdir!(basename_or_opts :: nil | String.t() | Keyword.t()) :: Path.t()
+  def mkdir!(basename_or_opts \\ nil) do
+    path = build_path(basename_or_opts)
+    File.mkdir_p!(path)
+    path
+  end
+
+  @doc """
+  Creates a temp file and writes the given contents to it.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec write(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          content :: binary
+        ) :: {:ok, Path.t()} | {:error, File.posix()}
+  def write(basename_or_opts \\ nil, content) do
+    path = build_path(basename_or_opts)
+
+    with :ok <- File.write(path, content) do
+      {:ok, path}
+    end
+  end
+
+  @doc """
+  Creates a temp file and writes the given contents to it. Raises a `File.Error`
+  in case of failure.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec write!(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          content :: binary
+        ) :: Path.t()
+  def write!(basename_or_opts \\ nil, content) do
+    path = build_path(basename_or_opts)
+    File.write!(path, content)
+    path
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open(basename_or_opts :: nil | String.t() | Keyword.t()) ::
+          {:ok, Path.t(), File.io_device()} | {:error, File.posix()}
+  def open(basename_or_opts) do
+    open(basename_or_opts, [])
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          modes_or_function :: [File.mode()] | (File.io_device() -> any)
+        ) :: {:ok, Path.t(), File.io_device()} | {:error, File.posix()}
+  def open(basename_or_opts, modes_or_function) do
+    path = build_path(basename_or_opts)
+
+    with {:ok, res} <- File.open(path, file_modes_or_fun(modes_or_function)) do
+      {:ok, path, res}
+    end
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          modes :: [File.mode()],
+          fun :: (File.io_device() -> res)
+        ) :: {:ok, Path.t(), res} | {:error, File.posix()}
+        when res: var
+  def open(basename_or_opts, modes, fun) do
+    path = build_path(basename_or_opts)
+
+    with {:ok, res} <- File.open(path, file_modes_or_fun(modes), fun) do
+      {:ok, path, res}
+    end
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing. Raises a `File.Error` in case of
+  failure.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open!(basename_or_opts :: nil | String.t() | Keyword.t()) ::
+          {Path.t(), File.io_device()}
+  def open!(basename_or_opts) do
+    open!(basename_or_opts, [])
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing. Raises a `File.Error` in case of
+  failure.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open!(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          modes_or_function :: [File.mode()] | (File.io_device() -> any)
+        ) :: {Path.t(), File.io_device()}
+  def open!(basename_or_opts, modes_or_function) do
+    path = build_path(basename_or_opts)
+    res = File.open!(path, file_modes_or_fun(modes_or_function))
+    {path, res}
+  end
+
+  @doc """
+  Creates a temp file and opens it for writing. Raises a `File.Error` in case of
+  failure.
+
+  You can pass a file basename or options described in `path/1` as the first
+  argument.
+  """
+  @spec open!(
+          basename_or_opts :: nil | String.t() | Keyword.t(),
+          modes :: [File.mode()],
+          fun :: (File.io_device() -> res)
+        ) :: {Path.t(), res}
+        when res: var
+  def open!(basename_or_opts, modes, fun) do
+    path = build_path(basename_or_opts)
+    res = File.open!(path, file_modes_or_fun(modes), fun)
+    {path, res}
+  end
+
+  defp file_modes_or_fun(modes) when is_list(modes), do: [:write | modes]
+  defp file_modes_or_fun(term), do: term
+
+  @doc """
+  Gets the tracked paths.
+  """
+  @spec tracked_paths() :: [Path.t()]
+  def tracked_paths do
+    Tracker.get_paths()
   end
 
   @doc """

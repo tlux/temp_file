@@ -1,5 +1,5 @@
 defmodule TempFile.TrackerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   alias TempFile.Tracker
 
@@ -66,6 +66,22 @@ defmodule TempFile.TrackerTest do
     end
   end
 
+  describe "tracker_enabled?/0" do
+    test "tracker enabled" do
+      start_supervised!({Tracker, enabled: true})
+
+      assert :sys.get_state(Tracker).enabled? == true
+      assert Tracker.tracker_enabled?() == true
+    end
+
+    test "tracker disabld" do
+      start_supervised!({Tracker, enabled: false})
+
+      assert :sys.get_state(Tracker).enabled? == false
+      assert Tracker.tracker_enabled?() == false
+    end
+  end
+
   describe "toggle_tracker/1" do
     test "enable tracker" do
       start_supervised!({Tracker, enabled: false})
@@ -79,6 +95,21 @@ defmodule TempFile.TrackerTest do
 
       assert :ok = Tracker.toggle_tracker(false)
       assert :sys.get_state(Tracker).enabled? == false
+    end
+  end
+
+  describe "get_paths/0" do
+    test "get tracked paths" do
+      start_supervised!({Tracker, enabled: true})
+
+      assert :ok = Tracker.put_path("my/custom/path")
+      assert :ok = Tracker.put_path("path/to/another/file.txt")
+      assert :ok = Tracker.put_path("my/custom/path")
+
+      assert Tracker.get_paths() == [
+               "my/custom/path",
+               "path/to/another/file.txt"
+             ]
     end
   end
 
