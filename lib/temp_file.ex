@@ -185,10 +185,20 @@ defmodule TempFile do
           basename_or_opts :: nil | String.t() | Keyword.t(),
           modes_or_function :: [File.mode()] | (File.io_device() -> any)
         ) :: {:ok, Path.t(), File.io_device()} | {:error, File.posix()}
-  def open(basename_or_opts, modes_or_function) do
+  def open(basename_or_opts, modes_or_function)
+
+  def open(basename_or_opts, fun) when is_function(fun) do
     path = build_path(basename_or_opts)
 
-    with {:ok, res} <- File.open(path, file_modes_or_fun(modes_or_function)) do
+    with {:ok, res} <- File.open(path, file_modes([]), fun) do
+      {:ok, path, res}
+    end
+  end
+
+  def open(basename_or_opts, modes) do
+    path = build_path(basename_or_opts)
+
+    with {:ok, res} <- File.open(path, file_modes(modes)) do
       {:ok, path, res}
     end
   end
@@ -208,7 +218,7 @@ defmodule TempFile do
   def open(basename_or_opts, modes, fun) do
     path = build_path(basename_or_opts)
 
-    with {:ok, res} <- File.open(path, file_modes_or_fun(modes), fun) do
+    with {:ok, res} <- File.open(path, file_modes(modes), fun) do
       {:ok, path, res}
     end
   end
@@ -237,9 +247,17 @@ defmodule TempFile do
           basename_or_opts :: nil | String.t() | Keyword.t(),
           modes_or_function :: [File.mode()] | (File.io_device() -> any)
         ) :: {Path.t(), File.io_device()}
-  def open!(basename_or_opts, modes_or_function) do
+  def open!(basename_or_opts, modes_or_function)
+
+  def open!(basename_or_opts, fun) when is_function(fun) do
     path = build_path(basename_or_opts)
-    res = File.open!(path, file_modes_or_fun(modes_or_function))
+    res = File.open!(path, file_modes([]), fun)
+    {path, res}
+  end
+
+  def open!(basename_or_opts, modes) do
+    path = build_path(basename_or_opts)
+    res = File.open!(path, file_modes(modes))
     {path, res}
   end
 
@@ -258,12 +276,11 @@ defmodule TempFile do
         when res: var
   def open!(basename_or_opts, modes, fun) do
     path = build_path(basename_or_opts)
-    res = File.open!(path, file_modes_or_fun(modes), fun)
+    res = File.open!(path, file_modes(modes), fun)
     {path, res}
   end
 
-  defp file_modes_or_fun(modes) when is_list(modes), do: [:write | modes]
-  defp file_modes_or_fun(term), do: term
+  defp file_modes(modes) when is_list(modes), do: [:write | modes]
 
   @doc """
   Gets the tracked paths.

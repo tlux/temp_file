@@ -271,9 +271,12 @@ defmodule TempFileTest do
   end
 
   describe "open/2" do
-    test "open file with basename and modes" do
+    setup do
       start_supervised!(Tracker)
+      :ok
+    end
 
+    test "open file with basename and modes" do
       assert {:ok, path, file} = TempFile.open("my-basename", [:binary])
       on_exit(fn -> File.close(file) end)
 
@@ -282,6 +285,17 @@ defmodule TempFileTest do
 
       File.close(file)
 
+      assert File.read!(path) == @content
+    end
+
+    test "open file with basename and function" do
+      assert {:ok, path, :hello} =
+               TempFile.open("my-basename", fn file ->
+                 IO.binwrite(file, @content)
+                 :hello
+               end)
+
+      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
     end
   end
@@ -334,9 +348,12 @@ defmodule TempFileTest do
   end
 
   describe "open!/2" do
-    test "open file with basename and modes" do
+    setup do
       start_supervised!(Tracker)
+      :ok
+    end
 
+    test "open file with basename and modes" do
       assert {path, file} = TempFile.open!("my-basename", [:binary])
       on_exit(fn -> File.close(file) end)
 
@@ -345,6 +362,17 @@ defmodule TempFileTest do
 
       File.close(file)
 
+      assert File.read!(path) == @content
+    end
+
+    test "open file with basename and function" do
+      assert {path, :hello} =
+               TempFile.open!("my-basename", fn file ->
+                 IO.binwrite(file, @content)
+                 :hello
+               end)
+
+      assert path =~ ~r/\Atmp\/my-basename-([A-Za-z0-9-_]){48}\z/
       assert File.read!(path) == @content
     end
   end
@@ -380,6 +408,25 @@ defmodule TempFileTest do
 
       assert :ok = TempFile.untrack()
       assert Tracker.tracker_enabled?() == false
+    end
+  end
+
+  describe "cleanup/0" do
+    test "remove tracked files" do
+      start_supervised!({Tracker, enabled: true})
+
+      source_path = "test/fixtures/lorem-ipsum.txt"
+      path_a = TempFile.path()
+      path_b = TempFile.path()
+
+      File.cp(source_path, path_a)
+      File.cp(source_path, path_b)
+
+      assert path_a in TempFile.tracked_paths()
+      assert path_b in TempFile.tracked_paths()
+      assert :ok = TempFile.cleanup()
+      assert path_a not in TempFile.tracked_paths()
+      assert path_b not in TempFile.tracked_paths()
     end
   end
 end
